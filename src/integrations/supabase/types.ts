@@ -14,7 +14,112 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      matches: {
+        Row: {
+          created_at: string
+          id: string
+          is_open: boolean
+          note: string
+          opponent: string
+          our_score: number
+          played_on: string
+          their_score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          note?: string
+          opponent: string
+          our_score: number
+          played_on?: string
+          their_score: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_open?: boolean
+          note?: string
+          opponent?: string
+          our_score?: number
+          played_on?: string
+          their_score?: number
+        }
+        Relationships: []
+      }
+      players: {
+        Row: {
+          id: string
+          name: string
+          number: number
+          position: string
+          tagline: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          number: number
+          position?: string
+          tagline?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          number?: number
+          position?: string
+          tagline?: string
+        }
+        Relationships: []
+      }
+      votes: {
+        Row: {
+          award: string
+          created_at: string
+          id: string
+          match_id: string
+          player_id: string
+          voter_id: string
+        }
+        Insert: {
+          award: string
+          created_at?: string
+          id?: string
+          match_id: string
+          player_id: string
+          voter_id: string
+        }
+        Update: {
+          award?: string
+          created_at?: string
+          id?: string
+          match_id?: string
+          player_id?: string
+          voter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "votes_voter_id_fkey"
+            columns: ["voter_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
