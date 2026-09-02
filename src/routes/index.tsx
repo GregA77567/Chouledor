@@ -7,13 +7,13 @@ import { AWARDS, initials, type Award, type Match, type Player, type Vote } from
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Les Choules — Vote de l'homme du match" },
+      { title: "Le Choule d'Or — Vote de l'homme du match" },
       {
         name: "description",
         content:
           "Après chaque match, les joueurs du club votent pour la Choule d'Or, d'Argent, de Bronze et le Dommage.",
       },
-      { property: "og:title", content: "Les Choules — Vote de l'homme du match" },
+      { property: "og:title", content: "Le Choule d'Or — Vote de l'homme du match" },
       {
         property: "og:description",
         content:
@@ -188,7 +188,7 @@ function Index() {
               C
             </div>
             <div className="leading-none">
-              <div className="font-display text-base tracking-wide">LES CHOULES FC</div>
+              <div className="font-display text-base tracking-wide">LE CHOULE D'OR</div>
               <div className="mt-1 text-[9px] tracking-[0.25em] text-muted-foreground">
                 LE VOTE DU VESTIAIRE
               </div>
