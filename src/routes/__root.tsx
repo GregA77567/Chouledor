@@ -77,13 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Les Choules — Vote de l'homme du match" },
+      { title: "Le Choule d'Or — Vote de l'homme du match" },
       {
         name: "description",
         content:
           "Après chaque match, les joueurs du club votent pour la Choule d'Or, d'Argent, de Bronze et le Dommage.",
       },
-      { property: "og:title", content: "Les Choules — Vote de l'homme du match" },
+      { property: "og:title", content: "Le Choule d'Or — Vote de l'homme du match" },
       {
         property: "og:description",
         content:
