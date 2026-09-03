@@ -14,11 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      match_voters: {
+        Row: {
+          created_at: string
+          id: string
+          match_id: string
+          player_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          match_id: string
+          player_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          match_id?: string
+          player_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_voters_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_voters_player_id_fkey"
+            columns: ["player_id"]
+            isOneToOne: false
+            referencedRelation: "players"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           created_at: string
           id: string
           is_open: boolean
+          is_revealed: boolean
           note: string
           opponent: string
           our_score: number
@@ -29,6 +66,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_open?: boolean
+          is_revealed?: boolean
           note?: string
           opponent: string
           our_score: number
@@ -39,6 +77,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_open?: boolean
+          is_revealed?: boolean
           note?: string
           opponent?: string
           our_score?: number
@@ -125,7 +164,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      match_voted_ids: {
+        Args: { _match_id: string }
+        Returns: {
+          voter_id: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
