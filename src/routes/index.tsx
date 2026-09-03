@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -62,7 +62,6 @@ function useClubData() {
         supabase
           .from("matches")
           .select("*")
-          .eq("is_open", true)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -71,15 +70,29 @@ function useClubData() {
       if (matchRes.error) throw matchRes.error;
       const match = matchRes.data as Match | null;
       let votes: Vote[] = [];
+      let votedIds: string[] = [];
+      let voterIds: string[] = [];
       if (match) {
-        const { data, error } = await supabase.from("votes").select("*").eq("match_id", match.id);
-        if (error) throw error;
-        votes = (data ?? []) as Vote[];
+        const [votersRes, votedRes] = await Promise.all([
+          supabase.from("match_voters").select("player_id").eq("match_id", match.id),
+          supabase.rpc("match_voted_ids", { _match_id: match.id }),
+        ]);
+        if (votersRes.error) throw votersRes.error;
+        if (votedRes.error) throw votedRes.error;
+        voterIds = (votersRes.data ?? []).map((r) => r.player_id);
+        votedIds = ((votedRes.data ?? []) as { voter_id: string }[]).map((r) => r.voter_id);
+        if (match.is_revealed) {
+          const { data, error } = await supabase.from("votes").select("*").eq("match_id", match.id);
+          if (error) throw error;
+          votes = (data ?? []) as Vote[];
+        }
       }
       return {
         players: (playersRes.data ?? []) as Player[],
         match,
         votes,
+        votedIds,
+        voterIds,
       };
     },
   });
@@ -100,11 +113,21 @@ function Index() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const match = data?.match ?? null;
-  const players = useMemo(() => data?.players ?? [], [data]);
+  const allPlayers = useMemo(() => data?.players ?? [], [data]);
   const votes = useMemo(() => data?.votes ?? [], [data]);
+  const votedIds = useMemo(() => data?.votedIds ?? [], [data]);
+  const voterIds = useMemo(() => data?.voterIds ?? [], [data]);
 
-  const alreadyVoted =
-    match && voterId ? votes.some((v) => v.voter_id === voterId) : false;
+  // Joueurs convoqués pour ce match (sinon, tout l'effectif)
+  const players = useMemo(
+    () => (voterIds.length ? allPlayers.filter((p) => voterIds.includes(p.id)) : allPlayers),
+    [allPlayers, voterIds],
+  );
+
+  const isEligible = !voterId || !voterIds.length || voterIds.includes(voterId);
+  const alreadyVoted = match && voterId ? votedIds.includes(voterId) : false;
+  const revealed = Boolean(match?.is_revealed);
+  const votingOpen = Boolean(match?.is_open);
 
   const results = useMemo(() => {
     const tally = new Map<string, Record<Award, number>>();
@@ -114,15 +137,16 @@ function Index() {
       tally.set(v.player_id, entry);
     }
     return AWARDS.map((a) => {
-      const ranked = players
+      const ranked = allPlayers
         .map((p) => ({ player: p, count: tally.get(p.id)?.[a.key] ?? 0 }))
         .filter((r) => r.count > 0)
         .sort((x, y) => y.count - x.count);
       return { award: a, winner: ranked[0] ?? null };
     });
-  }, [votes, players]);
+  }, [votes, allPlayers]);
 
-  const voterCount = useMemo(() => new Set(votes.map((v) => v.voter_id)).size, [votes]);
+  const voterCount = votedIds.length;
+
 
   const assignedCount = Object.values(selection).filter(Boolean).length;
 
@@ -194,9 +218,18 @@ function Index() {
               </div>
             </div>
           </div>
-          <div className="font-mono text-[10px] text-muted-foreground">
-            {voterCount} / {players.length} votants
+          <div className="flex items-center gap-3">
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {voterCount} / {players.length} votants
+            </div>
+            <Link
+              to="/admin"
+              className="rounded-full bg-surface px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] text-muted-foreground ring-1 ring-line"
+            >
+              ADMIN
+            </Link>
           </div>
+
         </div>
       </div>
 
@@ -262,8 +295,29 @@ function Index() {
               </div>
             </div>
 
+            {/* Non convoqué */}
+            {votingOpen && !isEligible && (
+              <div className="animate-rise mt-4 rounded-xl bg-surface p-4 ring-1 ring-line">
+                <div className="font-display text-base tracking-wide">TU N'ES PAS CONVOQUÉ</div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  L'administrateur n'a pas retenu ton nom pour le vote de ce match.
+                </p>
+                <button
+                  onClick={() => {
+                    window.localStorage.removeItem(VOTER_KEY);
+                    setVoterId(null);
+                    setStep("identity");
+                  }}
+                  className="mt-3 rounded-full bg-surface-2 px-4 py-2 font-mono text-[10px] tracking-[0.15em] text-foreground ring-1 ring-line"
+                >
+                  CHANGER DE JOUEUR
+                </button>
+              </div>
+            )}
+
             {/* Step 1: identity */}
-            {step === "identity" && (
+            {step === "identity" && votingOpen && (
+
               <>
                 <div className="mt-6 flex items-center justify-between">
                   <h2 className="font-display text-lg tracking-wide">QUI ES-TU ?</h2>
@@ -296,7 +350,8 @@ function Index() {
             )}
 
             {/* Step 2: vote */}
-            {step === "vote" && !alreadyVoted && (
+            {step === "vote" && !alreadyVoted && votingOpen && isEligible && (
+
               <>
                 <div className="mt-4 grid grid-cols-4 gap-1.5">
                   {AWARDS.map((a, i) => {
@@ -418,25 +473,34 @@ function Index() {
               </>
             )}
 
-            {/* Done / already voted: results */}
-            {(step === "done" || alreadyVoted) && (
+            {/* Sous scellés : voté mais résultats non dévoilés */}
+            {!revealed && (step === "done" || alreadyVoted || !votingOpen) && (
+              <div className="animate-rise mt-4 rounded-2xl bg-surface p-5 text-center ring-1 ring-gold/30">
+                <div className="mx-auto grid size-12 place-items-center rounded-full bg-gradient-to-b from-foreground via-gold to-background font-display text-lg text-background ring-1 ring-gold/40">
+                  🔒
+                </div>
+                <div className="mt-3 font-display text-lg tracking-wide text-gold">
+                  {step === "done" || alreadyVoted ? "VOTE ENREGISTRÉ" : "VOTES CLÔTURÉS"}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Les résultats restent sous scellés jusqu'à ce que l'administrateur les dévoile.
+                </p>
+                <div className="mt-4 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                  {voterCount} / {players.length} VOTANTS
+                </div>
+              </div>
+            )}
+
+            {/* Résultats dévoilés */}
+            {revealed && (
               <>
-                {step === "done" && (
-                  <div className="animate-rise mt-4 rounded-xl bg-surface p-4 text-center ring-1 ring-gold/40">
-                    <div className="font-display text-lg tracking-wide text-gold">
-                      VOTE ENREGISTRÉ
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Merci ! Voici le point du vestiaire en direct.
-                    </p>
-                  </div>
-                )}
                 <div className="mt-6 flex items-center justify-between">
                   <h2 className="font-display text-lg tracking-wide">LE POINT DU VESTIAIRE</h2>
                   <div className="font-mono text-[10px] text-muted-foreground">
                     {voterCount} / {players.length} votants
                   </div>
                 </div>
+
                 <div className="mt-3 space-y-2.5">
                   {results.map(({ award, winner }, i) => (
                     <div
@@ -485,7 +549,7 @@ function Index() {
       </div>
 
       {/* Bottom bar */}
-      {match && step === "vote" && !alreadyVoted && (
+      {match && step === "vote" && !alreadyVoted && votingOpen && isEligible && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/95 backdrop-blur-sm">
           <div className="mx-auto max-w-md px-4 py-3">
             <div className="mb-2 flex items-center justify-between">

@@ -1,0 +1,519 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useMemo, useState } from "react";
+import {
+  addPlayer,
+  adminLogin,
+  adminLogout,
+  adminOverview,
+  adminStatus,
+  createMatch,
+  removePlayer,
+  setMatchState,
+  setMatchVoters,
+} from "@/lib/admin.functions";
+import { AWARDS, initials, type Award } from "@/lib/choules";
+
+export const Route = createFileRoute("/admin")({
+  ssr: false,
+  head: () => ({
+    meta: [
+      { title: "Administration — Le Choule d'Or" },
+      {
+        name: "description",
+        content:
+          "Espace administrateur : configurer le match du jour, convoquer les votants et clôturer les votes.",
+      },
+      { property: "og:title", content: "Administration — Le Choule d'Or" },
+      {
+        property: "og:description",
+        content: "Configurer le match du jour, convoquer les votants et dévoiler les résultats.",
+      },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+      { name: "robots", content: "noindex" },
+    ],
+  }),
+  component: Admin,
+});
+
+function Admin() {
+  const queryClient = useQueryClient();
+  const login = useServerFn(adminLogin);
+  const logout = useServerFn(adminLogout);
+  const status = useQuery({ queryKey: ["admin-status"], queryFn: () => adminStatus() });
+
+  const unlocked = status.data?.unlocked ?? false;
+
+  return (
+    <div className="min-h-screen bg-background pb-24 text-foreground">
+      <div className="sticky top-0 z-20 border-b border-line bg-background/90 backdrop-blur-sm">
+        <div className="mx-auto flex h-14 max-w-md items-center justify-between px-4">
+          <div className="leading-none">
+            <div className="font-display text-base tracking-wide">ADMINISTRATION</div>
+            <div className="mt-1 font-mono text-[9px] tracking-[0.25em] text-muted-foreground">
+              LE CHOULE D'OR
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/"
+              className="rounded-full bg-surface px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] text-muted-foreground ring-1 ring-line"
+            >
+              VESTIAIRE
+            </Link>
+            {unlocked && (
+              <button
+                onClick={async () => {
+                  await logout();
+                  await queryClient.invalidateQueries();
+                }}
+                className="rounded-full bg-surface px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] text-violet ring-1 ring-line"
+              >
+                QUITTER
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto max-w-md px-4 pt-6">
+        {status.isLoading && (
+          <div className="py-20 text-center font-mono text-xs text-muted-foreground">
+            Vérification…
+          </div>
+        )}
+        {!status.isLoading &&
+          (unlocked ? (
+            <AdminPanel />
+          ) : (
+            <LoginForm
+              onSubmit={async (password) => {
+                const res = await login({ data: { password } });
+                if (res.ok) await queryClient.invalidateQueries();
+                return res.ok;
+              }}
+            />
+          ))}
+      </div>
+    </div>
+  );
+}
+
+function LoginForm({ onSubmit }: { onSubmit: (password: string) => Promise<boolean> }) {
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <form
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        const ok = await onSubmit(password);
+        setBusy(false);
+        setError(!ok);
+      }}
+      className="animate-rise rounded-2xl bg-gradient-to-b from-bronze via-surface to-surface-2 p-5 ring-1 ring-gold/20"
+    >
+      <div className="font-display text-xl tracking-wide">ACCÈS RÉSERVÉ</div>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Entre le mot de passe administrateur pour configurer le match.
+      </p>
+      <input
+        type="password"
+        autoComplete="current-password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Mot de passe"
+        className="mt-4 w-full rounded-xl bg-background px-4 py-3 text-sm text-foreground ring-1 ring-line outline-none placeholder:text-muted-foreground focus:ring-gold/50"
+      />
+      {error && <div className="mt-2 text-xs text-violet">Mot de passe incorrect.</div>}
+      <button
+        type="submit"
+        disabled={busy || !password}
+        className="mt-4 w-full rounded-full bg-gradient-to-b from-gold via-gold to-bronze py-3 font-display text-base tracking-wide text-background ring-1 ring-gold/60 disabled:opacity-40"
+      >
+        {busy ? "…" : "ENTRER"}
+      </button>
+    </form>
+  );
+}
+
+const inputClass =
+  "w-full rounded-xl bg-background px-3 py-2.5 text-sm text-foreground ring-1 ring-line outline-none placeholder:text-muted-foreground focus:ring-gold/50";
+
+function AdminPanel() {
+  const queryClient = useQueryClient();
+  const overview = useQuery({ queryKey: ["admin-overview"], queryFn: () => adminOverview() });
+
+  const saveVoters = useServerFn(setMatchVoters);
+  const saveState = useServerFn(setMatchState);
+  const newMatch = useServerFn(createMatch);
+  const newPlayer = useServerFn(addPlayer);
+  const delPlayer = useServerFn(removePlayer);
+
+  const players = overview.data?.players ?? [];
+  const current = overview.data?.current ?? null;
+  const votes = useMemo(() => overview.data?.votes ?? [], [overview.data]);
+
+  const [selected, setSelected] = useState<string[]>([]);
+  useEffect(() => {
+    setSelected(overview.data?.voterIds ?? []);
+  }, [overview.data?.voterIds]);
+
+  const [form, setForm] = useState({
+    opponent: "",
+    our_score: 0,
+    their_score: 0,
+    played_on: new Date().toISOString().slice(0, 10),
+    note: "",
+  });
+  const [showNew, setShowNew] = useState(false);
+  const [newP, setNewP] = useState({ name: "", number: 0, position: "Joueur" });
+  const [busy, setBusy] = useState(false);
+
+  const votedIds = useMemo(() => new Set(votes.map((v) => v.voter_id)), [votes]);
+
+  const tally = useMemo(() => {
+    const map = new Map<string, Record<Award, number>>();
+    for (const v of votes) {
+      const e = map.get(v.player_id) ?? { or: 0, argent: 0, bronze: 0, dommage: 0 };
+      e[v.award as Award] += 1;
+      map.set(v.player_id, e);
+    }
+    return AWARDS.map((a) => ({
+      award: a,
+      ranked: players
+        .map((p) => ({ player: p, count: map.get(p.id)?.[a.key] ?? 0 }))
+        .filter((r) => r.count > 0)
+        .sort((x, y) => y.count - x.count),
+    }));
+  }, [votes, players]);
+
+  async function refresh() {
+    await queryClient.invalidateQueries();
+  }
+
+  if (overview.isLoading) {
+    return (
+      <div className="py-20 text-center font-mono text-xs text-muted-foreground">Chargement…</div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Match courant */}
+      <section className="animate-rise rounded-2xl bg-gradient-to-b from-bronze via-surface to-surface-2 p-5 ring-1 ring-gold/20">
+        <div className="font-mono text-[10px] tracking-[0.2em] text-gold/80">MATCH DU JOUR</div>
+        {current ? (
+          <>
+            <div className="mt-2 font-display text-2xl uppercase tracking-tight">
+              vs {current.opponent}
+            </div>
+            <div className="mt-1 font-mono text-xs text-muted-foreground">
+              {current.our_score} — {current.their_score} ·{" "}
+              {new Date(current.played_on + "T00:00:00").toLocaleDateString("fr-FR")}
+            </div>
+            <div className="mt-3 flex flex-wrap gap-2 font-mono text-[10px]">
+              <span
+                className={`rounded-full px-2.5 py-1 ring-1 ${
+                  current.is_open ? "text-gold ring-gold/40" : "text-muted-foreground ring-line"
+                }`}
+              >
+                {current.is_open ? "VOTES OUVERTS" : "VOTES FERMÉS"}
+              </span>
+              <span
+                className={`rounded-full px-2.5 py-1 ring-1 ${
+                  current.is_revealed
+                    ? "text-silver ring-silver/40"
+                    : "text-muted-foreground ring-line"
+                }`}
+              >
+                {current.is_revealed ? "RÉSULTATS DÉVOILÉS" : "RÉSULTATS SOUS SCELLÉS"}
+              </span>
+              <span className="rounded-full px-2.5 py-1 text-muted-foreground ring-1 ring-line">
+                {votedIds.size} / {selected.length || players.length} VOTANTS
+              </span>
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  await saveState({
+                    data: {
+                      matchId: current.id,
+                      is_open: !current.is_open,
+                      is_revealed: current.is_revealed,
+                    },
+                  });
+                  setBusy(false);
+                  await refresh();
+                }}
+                className="rounded-full bg-surface px-3 py-2.5 font-mono text-[10px] tracking-[0.15em] ring-1 ring-line"
+              >
+                {current.is_open ? "FERMER LES VOTES" : "ROUVRIR LES VOTES"}
+              </button>
+              <button
+                disabled={busy}
+                onClick={async () => {
+                  setBusy(true);
+                  await saveState({
+                    data: {
+                      matchId: current.id,
+                      is_open: current.is_revealed ? current.is_open : false,
+                      is_revealed: !current.is_revealed,
+                    },
+                  });
+                  setBusy(false);
+                  await refresh();
+                }}
+                className="rounded-full bg-gradient-to-b from-gold via-gold to-bronze px-3 py-2.5 font-mono text-[10px] tracking-[0.15em] text-background ring-1 ring-gold/60"
+              >
+                {current.is_revealed ? "MASQUER" : "CLÔTURER & DÉVOILER"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-muted-foreground">
+            Aucun match enregistré. Crée le match du jour ci-dessous.
+          </p>
+        )}
+      </section>
+
+      {/* Convocation */}
+      {current && (
+        <section>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg tracking-wide">LES VOTANTS</h2>
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {selected.length} sélectionnés
+            </div>
+          </div>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Coche les joueurs présents : eux seuls pourront voter.
+          </p>
+          <div className="mt-3 space-y-2">
+            {players.map((p) => {
+              const on = selected.includes(p.id);
+              return (
+                <button
+                  key={p.id}
+                  onClick={() =>
+                    setSelected((prev) =>
+                      prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id],
+                    )
+                  }
+                  className={`flex w-full items-center gap-3 rounded-xl bg-surface p-3 text-left ring-1 transition-colors ${
+                    on ? "ring-gold/50" : "ring-line"
+                  }`}
+                >
+                  <div className="grid size-9 shrink-0 place-items-center rounded-full bg-gradient-to-b from-foreground via-silver to-background font-display text-xs text-background ring-1 ring-line">
+                    {initials(p.name)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold">{p.name}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground">
+                      Nº {p.number} · {p.position}
+                      {votedIds.has(p.id) ? " · a voté" : ""}
+                    </div>
+                  </div>
+                  <div
+                    className={`shrink-0 rounded-full px-2.5 py-1 font-mono text-[10px] ${
+                      on ? "bg-gold text-background" : "bg-surface-2 text-muted-foreground"
+                    }`}
+                  >
+                    {on ? "CONVOQUÉ" : "ABSENT"}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setSelected(players.map((p) => p.id))}
+              className="rounded-full bg-surface px-3 py-2.5 font-mono text-[10px] tracking-[0.15em] ring-1 ring-line"
+            >
+              TOUT COCHER
+            </button>
+            <button
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                await saveVoters({ data: { matchId: current.id, voterIds: selected } });
+                setBusy(false);
+                await refresh();
+              }}
+              className="rounded-full bg-surface-2 px-3 py-2.5 font-mono text-[10px] tracking-[0.15em] text-gold ring-1 ring-gold/40"
+            >
+              ENREGISTRER
+            </button>
+          </div>
+        </section>
+      )}
+
+      {/* Résultats (admin uniquement) */}
+      {current && (
+        <section>
+          <h2 className="font-display text-lg tracking-wide">RÉSULTATS EN DIRECT</h2>
+          <p className="mt-1 text-[12px] text-muted-foreground">
+            Visibles par toi seul tant que tu n'as pas dévoilé les résultats.
+          </p>
+          <div className="mt-3 space-y-2">
+            {tally.map(({ award, ranked }) => (
+              <div key={award.key} className="rounded-xl bg-surface p-3 ring-1 ring-line">
+                <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+                  {award.label.toUpperCase()}
+                </div>
+                {ranked.length === 0 ? (
+                  <div className="mt-1 text-sm text-muted-foreground">Aucun vote</div>
+                ) : (
+                  <div className="mt-1.5 space-y-1">
+                    {ranked.map((r) => (
+                      <div key={r.player.id} className="flex items-center justify-between text-sm">
+                        <span className="truncate">{r.player.name}</span>
+                        <span className="font-mono text-xs text-muted-foreground">{r.count}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Nouveau match */}
+      <section>
+        <h2 className="font-display text-lg tracking-wide">NOUVEAU MATCH</h2>
+        <p className="mt-1 text-[12px] text-muted-foreground">
+          Ouvre un nouveau vote — les joueurs cochés ci-dessus seront convoqués.
+        </p>
+        <div className="mt-3 space-y-2">
+          <input
+            className={inputClass}
+            placeholder="Adversaire"
+            value={form.opponent}
+            onChange={(e) => setForm({ ...form, opponent: e.target.value })}
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              className={inputClass}
+              type="number"
+              placeholder="Nos buts"
+              value={form.our_score}
+              onChange={(e) => setForm({ ...form, our_score: Number(e.target.value) })}
+            />
+            <input
+              className={inputClass}
+              type="number"
+              placeholder="Leurs buts"
+              value={form.their_score}
+              onChange={(e) => setForm({ ...form, their_score: Number(e.target.value) })}
+            />
+          </div>
+          <input
+            className={inputClass}
+            type="date"
+            value={form.played_on}
+            onChange={(e) => setForm({ ...form, played_on: e.target.value })}
+          />
+          <input
+            className={inputClass}
+            placeholder="Note du vestiaire (optionnel)"
+            value={form.note}
+            onChange={(e) => setForm({ ...form, note: e.target.value })}
+          />
+          <button
+            disabled={busy || !form.opponent.trim()}
+            onClick={async () => {
+              setBusy(true);
+              await newMatch({ data: { ...form, voterIds: selected } });
+              setBusy(false);
+              setForm({ ...form, opponent: "", our_score: 0, their_score: 0, note: "" });
+              await refresh();
+            }}
+            className="w-full rounded-full bg-gradient-to-b from-gold via-gold to-bronze py-3 font-display text-base tracking-wide text-background ring-1 ring-gold/60 disabled:opacity-40"
+          >
+            OUVRIR LE VOTE
+          </button>
+        </div>
+      </section>
+
+      {/* Effectif */}
+      <section>
+        <div className="flex items-center justify-between">
+          <h2 className="font-display text-lg tracking-wide">L'EFFECTIF</h2>
+          <button
+            onClick={() => setShowNew((v) => !v)}
+            className="rounded-full bg-surface px-3 py-1.5 font-mono text-[10px] tracking-[0.15em] ring-1 ring-line"
+          >
+            {showNew ? "FERMER" : "+ JOUEUR"}
+          </button>
+        </div>
+        {showNew && (
+          <div className="mt-3 space-y-2 rounded-xl bg-surface p-3 ring-1 ring-line">
+            <input
+              className={inputClass}
+              placeholder="Nom"
+              value={newP.name}
+              onChange={(e) => setNewP({ ...newP, name: e.target.value })}
+            />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                className={inputClass}
+                type="number"
+                placeholder="Numéro"
+                value={newP.number}
+                onChange={(e) => setNewP({ ...newP, number: Number(e.target.value) })}
+              />
+              <input
+                className={inputClass}
+                placeholder="Poste"
+                value={newP.position}
+                onChange={(e) => setNewP({ ...newP, position: e.target.value })}
+              />
+            </div>
+            <button
+              disabled={busy || !newP.name.trim()}
+              onClick={async () => {
+                setBusy(true);
+                await newPlayer({ data: newP });
+                setBusy(false);
+                setNewP({ name: "", number: 0, position: "Joueur" });
+                await refresh();
+              }}
+              className="w-full rounded-full bg-surface-2 py-2.5 font-mono text-[10px] tracking-[0.15em] text-gold ring-1 ring-gold/40 disabled:opacity-40"
+            >
+              AJOUTER
+            </button>
+          </div>
+        )}
+        <div className="mt-3 space-y-1.5">
+          {players.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-center justify-between rounded-xl bg-surface px-3 py-2.5 ring-1 ring-line"
+            >
+              <span className="truncate text-sm">
+                <span className="font-mono text-[10px] text-muted-foreground">Nº {p.number}</span>{" "}
+                {p.name}
+              </span>
+              <button
+                onClick={async () => {
+                  await delPlayer({ data: { id: p.id } });
+                  await refresh();
+                }}
+                className="shrink-0 font-mono text-[10px] text-violet"
+              >
+                SUPPRIMER
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
