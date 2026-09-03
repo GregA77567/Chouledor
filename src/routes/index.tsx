@@ -62,7 +62,6 @@ function useClubData() {
         supabase
           .from("matches")
           .select("*")
-          .eq("is_open", true)
           .order("created_at", { ascending: false })
           .limit(1)
           .maybeSingle(),
@@ -71,15 +70,29 @@ function useClubData() {
       if (matchRes.error) throw matchRes.error;
       const match = matchRes.data as Match | null;
       let votes: Vote[] = [];
+      let votedIds: string[] = [];
+      let voterIds: string[] = [];
       if (match) {
-        const { data, error } = await supabase.from("votes").select("*").eq("match_id", match.id);
-        if (error) throw error;
-        votes = (data ?? []) as Vote[];
+        const [votersRes, votedRes] = await Promise.all([
+          supabase.from("match_voters").select("player_id").eq("match_id", match.id),
+          supabase.rpc("match_voted_ids", { _match_id: match.id }),
+        ]);
+        if (votersRes.error) throw votersRes.error;
+        if (votedRes.error) throw votedRes.error;
+        voterIds = (votersRes.data ?? []).map((r) => r.player_id);
+        votedIds = ((votedRes.data ?? []) as { voter_id: string }[]).map((r) => r.voter_id);
+        if (match.is_revealed) {
+          const { data, error } = await supabase.from("votes").select("*").eq("match_id", match.id);
+          if (error) throw error;
+          votes = (data ?? []) as Vote[];
+        }
       }
       return {
         players: (playersRes.data ?? []) as Player[],
         match,
         votes,
+        votedIds,
+        voterIds,
       };
     },
   });
@@ -100,11 +113,21 @@ function Index() {
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const match = data?.match ?? null;
-  const players = useMemo(() => data?.players ?? [], [data]);
+  const allPlayers = useMemo(() => data?.players ?? [], [data]);
   const votes = useMemo(() => data?.votes ?? [], [data]);
+  const votedIds = useMemo(() => data?.votedIds ?? [], [data]);
+  const voterIds = useMemo(() => data?.voterIds ?? [], [data]);
 
-  const alreadyVoted =
-    match && voterId ? votes.some((v) => v.voter_id === voterId) : false;
+  // Joueurs convoqués pour ce match (sinon, tout l'effectif)
+  const players = useMemo(
+    () => (voterIds.length ? allPlayers.filter((p) => voterIds.includes(p.id)) : allPlayers),
+    [allPlayers, voterIds],
+  );
+
+  const isEligible = !voterId || !voterIds.length || voterIds.includes(voterId);
+  const alreadyVoted = match && voterId ? votedIds.includes(voterId) : false;
+  const revealed = Boolean(match?.is_revealed);
+  const votingOpen = Boolean(match?.is_open);
 
   const results = useMemo(() => {
     const tally = new Map<string, Record<Award, number>>();
@@ -114,15 +137,16 @@ function Index() {
       tally.set(v.player_id, entry);
     }
     return AWARDS.map((a) => {
-      const ranked = players
+      const ranked = allPlayers
         .map((p) => ({ player: p, count: tally.get(p.id)?.[a.key] ?? 0 }))
         .filter((r) => r.count > 0)
         .sort((x, y) => y.count - x.count);
       return { award: a, winner: ranked[0] ?? null };
     });
-  }, [votes, players]);
+  }, [votes, allPlayers]);
 
-  const voterCount = useMemo(() => new Set(votes.map((v) => v.voter_id)).size, [votes]);
+  const voterCount = votedIds.length;
+
 
   const assignedCount = Object.values(selection).filter(Boolean).length;
 
