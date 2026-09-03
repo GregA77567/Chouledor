@@ -473,25 +473,34 @@ function Index() {
               </>
             )}
 
-            {/* Done / already voted: results */}
-            {(step === "done" || alreadyVoted) && (
+            {/* Sous scellés : voté mais résultats non dévoilés */}
+            {!revealed && (step === "done" || alreadyVoted || !votingOpen) && (
+              <div className="animate-rise mt-4 rounded-2xl bg-surface p-5 text-center ring-1 ring-gold/30">
+                <div className="mx-auto grid size-12 place-items-center rounded-full bg-gradient-to-b from-foreground via-gold to-background font-display text-lg text-background ring-1 ring-gold/40">
+                  🔒
+                </div>
+                <div className="mt-3 font-display text-lg tracking-wide text-gold">
+                  {step === "done" || alreadyVoted ? "VOTE ENREGISTRÉ" : "VOTES CLÔTURÉS"}
+                </div>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Les résultats restent sous scellés jusqu'à ce que l'administrateur les dévoile.
+                </p>
+                <div className="mt-4 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                  {voterCount} / {players.length} VOTANTS
+                </div>
+              </div>
+            )}
+
+            {/* Résultats dévoilés */}
+            {revealed && (
               <>
-                {step === "done" && (
-                  <div className="animate-rise mt-4 rounded-xl bg-surface p-4 text-center ring-1 ring-gold/40">
-                    <div className="font-display text-lg tracking-wide text-gold">
-                      VOTE ENREGISTRÉ
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Merci ! Voici le point du vestiaire en direct.
-                    </p>
-                  </div>
-                )}
                 <div className="mt-6 flex items-center justify-between">
                   <h2 className="font-display text-lg tracking-wide">LE POINT DU VESTIAIRE</h2>
                   <div className="font-mono text-[10px] text-muted-foreground">
                     {voterCount} / {players.length} votants
                   </div>
                 </div>
+
                 <div className="mt-3 space-y-2.5">
                   {results.map(({ award, winner }, i) => (
                     <div
