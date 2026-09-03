@@ -295,8 +295,29 @@ function Index() {
               </div>
             </div>
 
+            {/* Non convoqué */}
+            {votingOpen && !isEligible && (
+              <div className="animate-rise mt-4 rounded-xl bg-surface p-4 ring-1 ring-line">
+                <div className="font-display text-base tracking-wide">TU N'ES PAS CONVOQUÉ</div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  L'administrateur n'a pas retenu ton nom pour le vote de ce match.
+                </p>
+                <button
+                  onClick={() => {
+                    window.localStorage.removeItem(VOTER_KEY);
+                    setVoterId(null);
+                    setStep("identity");
+                  }}
+                  className="mt-3 rounded-full bg-surface-2 px-4 py-2 font-mono text-[10px] tracking-[0.15em] text-foreground ring-1 ring-line"
+                >
+                  CHANGER DE JOUEUR
+                </button>
+              </div>
+            )}
+
             {/* Step 1: identity */}
-            {step === "identity" && (
+            {step === "identity" && votingOpen && (
+
               <>
                 <div className="mt-6 flex items-center justify-between">
                   <h2 className="font-display text-lg tracking-wide">QUI ES-TU ?</h2>
