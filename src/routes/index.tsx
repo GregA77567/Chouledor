@@ -350,7 +350,8 @@ function Index() {
             )}
 
             {/* Step 2: vote */}
-            {step === "vote" && !alreadyVoted && (
+            {step === "vote" && !alreadyVoted && votingOpen && isEligible && (
+
               <>
                 <div className="mt-4 grid grid-cols-4 gap-1.5">
                   {AWARDS.map((a, i) => {
