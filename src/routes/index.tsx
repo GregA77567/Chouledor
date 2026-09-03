@@ -218,9 +218,18 @@ function Index() {
               </div>
             </div>
           </div>
-          <div className="font-mono text-[10px] text-muted-foreground">
-            {voterCount} / {players.length} votants
+          <div className="flex items-center gap-3">
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {voterCount} / {players.length} votants
+            </div>
+            <Link
+              to="/admin"
+              className="rounded-full bg-surface px-2.5 py-1 font-mono text-[9px] tracking-[0.15em] text-muted-foreground ring-1 ring-line"
+            >
+              ADMIN
+            </Link>
           </div>
+
         </div>
       </div>
 
