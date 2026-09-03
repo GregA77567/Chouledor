@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -549,7 +549,7 @@ function Index() {
       </div>
 
       {/* Bottom bar */}
-      {match && step === "vote" && !alreadyVoted && (
+      {match && step === "vote" && !alreadyVoted && votingOpen && isEligible && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/95 backdrop-blur-sm">
           <div className="mx-auto max-w-md px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
