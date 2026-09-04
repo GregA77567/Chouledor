@@ -58,9 +58,9 @@ export type Database = {
           is_revealed: boolean
           note: string
           opponent: string
-          our_score: number
+          our_score: number | null
           played_on: string
-          their_score: number
+          their_score: number | null
         }
         Insert: {
           created_at?: string
@@ -69,9 +69,9 @@ export type Database = {
           is_revealed?: boolean
           note?: string
           opponent: string
-          our_score: number
+          our_score?: number | null
           played_on?: string
-          their_score: number
+          their_score?: number | null
         }
         Update: {
           created_at?: string
@@ -80,9 +80,9 @@ export type Database = {
           is_revealed?: boolean
           note?: string
           opponent?: string
-          our_score?: number
+          our_score?: number | null
           played_on?: string
-          their_score?: number
+          their_score?: number | null
         }
         Relationships: []
       }
@@ -146,13 +146,6 @@ export type Database = {
           {
             foreignKeyName: "votes_player_id_fkey"
             columns: ["player_id"]
-            isOneToOne: false
-            referencedRelation: "players"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "votes_voter_id_fkey"
-            columns: ["voter_id"]
             isOneToOne: false
             referencedRelation: "players"
             referencedColumns: ["id"]
