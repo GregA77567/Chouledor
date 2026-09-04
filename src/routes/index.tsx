@@ -270,7 +270,7 @@ function Index() {
                 </div>
                 <div className="mt-3 flex items-center justify-between gap-3">
                   <div>
-                    <div className="font-display text-2xl tracking-tight">LES CHOULES FC</div>
+                    <div className="font-display text-2xl tracking-tight">LE CHOULE</div>
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
                       {match.our_score} — {match.their_score}
                     </div>
