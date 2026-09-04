@@ -28,6 +28,7 @@ export type Match = {
   played_on: string;
   note: string;
   is_open: boolean;
+  is_revealed: boolean;
 };
 
 export type Vote = {
