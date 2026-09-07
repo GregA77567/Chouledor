@@ -23,8 +23,8 @@ export type Player = {
 export type Match = {
   id: string;
   opponent: string;
-  our_score: number;
-  their_score: number;
+  our_score: number | null;
+  their_score: number | null;
   played_on: string;
   note: string;
   is_open: boolean;
