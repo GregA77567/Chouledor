@@ -126,13 +126,12 @@ function Index() {
   const votedIds = useMemo(() => data?.votedIds ?? [], [data]);
   const voterIds = useMemo(() => data?.voterIds ?? [], [data]);
 
-  // Joueurs convoqués pour ce match (sinon, tout l'effectif)
+  // Joueurs présents au match (sinon, tout l'effectif)
   const players = useMemo(
     () => (voterIds.length ? allPlayers.filter((p) => voterIds.includes(p.id)) : allPlayers),
     [allPlayers, voterIds],
   );
 
-  const isEligible = !voterId || !voterIds.length || voterIds.includes(voterId);
   const alreadyVoted = match && voterId ? votedIds.includes(voterId) : false;
   const revealed = Boolean(match?.is_revealed);
   const votingOpen = Boolean(match?.is_open);
