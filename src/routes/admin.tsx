@@ -12,6 +12,7 @@ import {
   removePlayer,
   setMatchState,
   setMatchVoters,
+  updateMatch,
 } from "@/lib/admin.functions";
 import { AWARDS, initials, type Award } from "@/lib/choules";
 
@@ -151,6 +152,7 @@ function AdminPanel() {
   const saveVoters = useServerFn(setMatchVoters);
   const saveState = useServerFn(setMatchState);
   const newMatch = useServerFn(createMatch);
+  const editMatch = useServerFn(updateMatch);
   const newPlayer = useServerFn(addPlayer);
   const delPlayer = useServerFn(removePlayer);
 
@@ -163,13 +165,37 @@ function AdminPanel() {
     setSelected(overview.data?.voterIds ?? []);
   }, [overview.data?.voterIds]);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<{
+    opponent: string;
+    our_score: string;
+    their_score: string;
+    played_on: string;
+    note: string;
+  }>({
     opponent: "",
-    our_score: 0,
-    their_score: 0,
+    our_score: "",
+    their_score: "",
     played_on: new Date().toISOString().slice(0, 10),
     note: "",
   });
+
+  const [edit, setEdit] = useState({
+    opponent: "",
+    our_score: "",
+    their_score: "",
+    played_on: new Date().toISOString().slice(0, 10),
+    note: "",
+  });
+  useEffect(() => {
+    if (!current) return;
+    setEdit({
+      opponent: current.opponent,
+      our_score: current.our_score === null ? "" : String(current.our_score),
+      their_score: current.their_score === null ? "" : String(current.their_score),
+      played_on: current.played_on,
+      note: current.note ?? "",
+    });
+  }, [current]);
   const [showNew, setShowNew] = useState(false);
   const [newP, setNewP] = useState({ name: "", number: 0, position: "Joueur" });
   const [busy, setBusy] = useState(false);
@@ -213,7 +239,7 @@ function AdminPanel() {
               vs {current.opponent}
             </div>
             <div className="mt-1 font-mono text-xs text-muted-foreground">
-              {current.our_score} — {current.their_score} ·{" "}
+              {current.our_score ?? "–"} — {current.their_score ?? "–"} ·{" "}
               {new Date(current.played_on + "T00:00:00").toLocaleDateString("fr-FR")}
             </div>
             <div className="mt-3 flex flex-wrap gap-2 font-mono text-[10px]">
@@ -234,7 +260,7 @@ function AdminPanel() {
                 {current.is_revealed ? "RÉSULTATS DÉVOILÉS" : "RÉSULTATS SOUS SCELLÉS"}
               </span>
               <span className="rounded-full px-2.5 py-1 text-muted-foreground ring-1 ring-line">
-                {votedIds.size} / {selected.length || players.length} VOTANTS
+                {votedIds.size} VOTE{votedIds.size > 1 ? "S" : ""}
               </span>
             </div>
             <div className="mt-4 grid grid-cols-2 gap-2">
@@ -275,6 +301,68 @@ function AdminPanel() {
                 {current.is_revealed ? "MASQUER" : "CLÔTURER & DÉVOILER"}
               </button>
             </div>
+            <div className="mt-5 border-t border-line pt-4">
+              <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+                MODIFIER LA FEUILLE DE MATCH
+              </div>
+              <div className="mt-3 space-y-2">
+                <input
+                  value={edit.opponent}
+                  onChange={(e) => setEdit({ ...edit, opponent: e.target.value })}
+                  placeholder="Adversaire"
+                  className="w-full rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    value={edit.our_score}
+                    onChange={(e) => setEdit({ ...edit, our_score: e.target.value })}
+                    placeholder="Nous"
+                    className="rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                  />
+                  <input
+                    type="number"
+                    value={edit.their_score}
+                    onChange={(e) => setEdit({ ...edit, their_score: e.target.value })}
+                    placeholder="Eux"
+                    className="rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                  />
+                  <input
+                    type="date"
+                    value={edit.played_on}
+                    onChange={(e) => setEdit({ ...edit, played_on: e.target.value })}
+                    className="rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                  />
+                </div>
+                <input
+                  value={edit.note}
+                  onChange={(e) => setEdit({ ...edit, note: e.target.value })}
+                  placeholder="Note du match (optionnel)"
+                  className="w-full rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                />
+                <button
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    await editMatch({
+                      data: {
+                        matchId: current.id,
+                        opponent: edit.opponent,
+                        our_score: edit.our_score === "" ? null : Number(edit.our_score),
+                        their_score: edit.their_score === "" ? null : Number(edit.their_score),
+                        played_on: edit.played_on,
+                        note: edit.note,
+                      },
+                    });
+                    setBusy(false);
+                    await refresh();
+                  }}
+                  className="w-full rounded-full bg-surface-2 px-3 py-2.5 font-mono text-[10px] tracking-[0.15em] ring-1 ring-line"
+                >
+                  ENREGISTRER LA FEUILLE DE MATCH
+                </button>
+              </div>
+            </div>
           </>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">
@@ -287,13 +375,13 @@ function AdminPanel() {
       {current && (
         <section>
           <div className="flex items-center justify-between">
-            <h2 className="font-display text-lg tracking-wide">LES VOTANTS</h2>
+            <h2 className="font-display text-lg tracking-wide">JOUEURS PRÉSENTS</h2>
             <div className="font-mono text-[10px] text-muted-foreground">
               {selected.length} sélectionnés
             </div>
           </div>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Coche les joueurs présents : eux seuls pourront voter.
+            Coche les joueurs présents au match : ce sont eux qui apparaissent dans la liste de vote.
           </p>
           <div className="mt-3 space-y-2">
             {players.map((p) => {
@@ -317,7 +405,7 @@ function AdminPanel() {
                     <div className="truncate text-sm font-semibold">{p.name}</div>
                     <div className="truncate font-mono text-[10px] text-muted-foreground">
                       Nº {p.number} · {p.position}
-                      {votedIds.has(p.id) ? " · a voté" : ""}
+        
                     </div>
                   </div>
                   <div
@@ -325,7 +413,7 @@ function AdminPanel() {
                       on ? "bg-gold text-background" : "bg-surface-2 text-muted-foreground"
                     }`}
                   >
-                    {on ? "CONVOQUÉ" : "ABSENT"}
+                    {on ? "PRÉSENT" : "ABSENT"}
                   </div>
                 </button>
               );
@@ -389,7 +477,7 @@ function AdminPanel() {
       <section>
         <h2 className="font-display text-lg tracking-wide">NOUVEAU MATCH</h2>
         <p className="mt-1 text-[12px] text-muted-foreground">
-          Ouvre un nouveau vote — les joueurs cochés ci-dessus seront convoqués.
+          Prépare la feuille de match à l'avance — le score peut rester vide et être complété plus tard. Les joueurs cochés ci-dessus seront la liste de vote.
         </p>
         <div className="mt-3 space-y-2">
           <input
@@ -404,14 +492,14 @@ function AdminPanel() {
               type="number"
               placeholder="Nos buts"
               value={form.our_score}
-              onChange={(e) => setForm({ ...form, our_score: Number(e.target.value) })}
+              onChange={(e) => setForm({ ...form, our_score: e.target.value })}
             />
             <input
               className={inputClass}
               type="number"
               placeholder="Leurs buts"
               value={form.their_score}
-              onChange={(e) => setForm({ ...form, their_score: Number(e.target.value) })}
+              onChange={(e) => setForm({ ...form, their_score: e.target.value })}
             />
           </div>
           <input
@@ -430,9 +518,18 @@ function AdminPanel() {
             disabled={busy || !form.opponent.trim()}
             onClick={async () => {
               setBusy(true);
-              await newMatch({ data: { ...form, voterIds: selected } });
+              await newMatch({
+                data: {
+                  opponent: form.opponent,
+                  our_score: form.our_score === "" ? null : Number(form.our_score),
+                  their_score: form.their_score === "" ? null : Number(form.their_score),
+                  played_on: form.played_on,
+                  note: form.note,
+                  voterIds: selected,
+                },
+              });
               setBusy(false);
-              setForm({ ...form, opponent: "", our_score: 0, their_score: 0, note: "" });
+              setForm({ ...form, opponent: "", our_score: "", their_score: "", note: "" });
               await refresh();
             }}
             className="w-full rounded-full bg-gradient-to-b from-gold via-gold to-bronze py-3 font-display text-base tracking-wide text-background ring-1 ring-gold/60 disabled:opacity-40"

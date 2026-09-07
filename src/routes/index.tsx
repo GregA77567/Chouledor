@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AWARDS, initials, type Award, type Match, type Player, type Vote } from "@/lib/choules";
 
@@ -26,9 +26,17 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Step = "identity" | "vote" | "done";
+type Step = "vote" | "done";
 
-const VOTER_KEY = "choules-voter-id";
+const VOTER_KEY = "choules-device-id";
+
+function getDeviceId(): string {
+  const existing = window.localStorage.getItem(VOTER_KEY);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  window.localStorage.setItem(VOTER_KEY, id);
+  return id;
+}
 
 const awardStyle: Record<Award, { ring: string; chip: string; text: string }> = {
   or: {
@@ -102,11 +110,11 @@ function Index() {
   const { data, isLoading, error } = useClubData();
   const queryClient = useQueryClient();
 
-  const [voterId, setVoterId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(VOTER_KEY);
-  });
-  const [step, setStep] = useState<Step>(voterId ? "vote" : "identity");
+  const [voterId, setVoterId] = useState<string | null>(null);
+  useEffect(() => {
+    setVoterId(getDeviceId());
+  }, []);
+  const [step, setStep] = useState<Step>("vote");
   const [selection, setSelection] = useState<Partial<Record<Award, string>>>({});
   const [activeAward, setActiveAward] = useState<Award>("or");
   const [submitting, setSubmitting] = useState(false);
@@ -118,13 +126,12 @@ function Index() {
   const votedIds = useMemo(() => data?.votedIds ?? [], [data]);
   const voterIds = useMemo(() => data?.voterIds ?? [], [data]);
 
-  // Joueurs convoqués pour ce match (sinon, tout l'effectif)
+  // Joueurs présents au match (sinon, tout l'effectif)
   const players = useMemo(
     () => (voterIds.length ? allPlayers.filter((p) => voterIds.includes(p.id)) : allPlayers),
     [allPlayers, voterIds],
   );
 
-  const isEligible = !voterId || !voterIds.length || voterIds.includes(voterId);
   const alreadyVoted = match && voterId ? votedIds.includes(voterId) : false;
   const revealed = Boolean(match?.is_revealed);
   const votingOpen = Boolean(match?.is_open);
@@ -150,11 +157,6 @@ function Index() {
 
   const assignedCount = Object.values(selection).filter(Boolean).length;
 
-  function pickIdentity(id: string) {
-    setVoterId(id);
-    window.localStorage.setItem(VOTER_KEY, id);
-    setStep("vote");
-  }
 
   function assign(playerId: string) {
     setSelection((prev) => {
@@ -220,7 +222,7 @@ function Index() {
           </div>
           <div className="flex items-center gap-3">
             <div className="font-mono text-[10px] text-muted-foreground">
-              {voterCount} / {players.length} votants
+              {voterCount} vote{voterCount > 1 ? "s" : ""}
             </div>
             <Link
               to="/admin"
@@ -272,7 +274,7 @@ function Index() {
                   <div>
                     <div className="font-display text-2xl tracking-tight">LE CHOULE</div>
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
-                      {match.our_score} — {match.their_score}
+                      {match.our_score ?? "–"} — {match.their_score ?? "–"}
                     </div>
                   </div>
                   <div className="shrink-0 origin-center rotate-90 font-mono text-[10px] text-muted-foreground">
@@ -283,10 +285,15 @@ function Index() {
                       {match.opponent}
                     </div>
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
-                      {match.their_score} — {match.our_score}
+                      {match.their_score ?? "–"} — {match.our_score ?? "–"}
                     </div>
                   </div>
                 </div>
+                {match.our_score === null && match.their_score === null && (
+                  <div className="mt-3 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                    SCORE À VENIR
+                  </div>
+                )}
                 {match.note && (
                   <div className="mt-4 border-t border-line pt-4 text-sm text-foreground/80">
                     {match.note}
@@ -295,62 +302,8 @@ function Index() {
               </div>
             </div>
 
-            {/* Non convoqué */}
-            {votingOpen && !isEligible && (
-              <div className="animate-rise mt-4 rounded-xl bg-surface p-4 ring-1 ring-line">
-                <div className="font-display text-base tracking-wide">TU N'ES PAS CONVOQUÉ</div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  L'administrateur n'a pas retenu ton nom pour le vote de ce match.
-                </p>
-                <button
-                  onClick={() => {
-                    window.localStorage.removeItem(VOTER_KEY);
-                    setVoterId(null);
-                    setStep("identity");
-                  }}
-                  className="mt-3 rounded-full bg-surface-2 px-4 py-2 font-mono text-[10px] tracking-[0.15em] text-foreground ring-1 ring-line"
-                >
-                  CHANGER DE JOUEUR
-                </button>
-              </div>
-            )}
-
-            {/* Step 1: identity */}
-            {step === "identity" && votingOpen && (
-
-              <>
-                <div className="mt-6 flex items-center justify-between">
-                  <h2 className="font-display text-lg tracking-wide">QUI ES-TU ?</h2>
-                  <div className="font-mono text-[10px] text-muted-foreground">ÉTAPE 1 / 2</div>
-                </div>
-                <p className="mt-1 text-[13px] text-muted-foreground">
-                  Choisis ton nom pour voter. Une seule fois par match, promis juré.
-                </p>
-                <div className="mt-3 grid grid-cols-2 gap-2.5">
-                  {players.map((p, i) => (
-                    <button
-                      key={p.id}
-                      onClick={() => pickIdentity(p.id)}
-                      className="animate-rise flex items-center gap-3 rounded-xl bg-surface p-3 text-left ring-1 ring-line transition-colors hover:bg-surface-2 active:scale-[0.98]"
-                      style={{ animationDelay: `${i * 40}ms` }}
-                    >
-                      <div className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-b from-foreground via-gold to-background font-display text-sm text-background ring-1 ring-gold/40">
-                        {initials(p.name)}
-                      </div>
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold">{p.name}</div>
-                        <div className="truncate font-mono text-[10px] text-muted-foreground">
-                          Nº {p.number} · {p.position}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </>
-            )}
-
-            {/* Step 2: vote */}
-            {step === "vote" && !alreadyVoted && votingOpen && isEligible && (
+            {/* Vote ouvert à tous */}
+            {step === "vote" && !alreadyVoted && votingOpen && (
 
               <>
                 <div className="mt-4 grid grid-cols-4 gap-1.5">
@@ -407,15 +360,13 @@ function Index() {
                     const award = (Object.entries(selection) as [Award, string][]).find(
                       ([, pid]) => pid === p.id,
                     )?.[0];
-                    const isVoter = p.id === voterId;
                     return (
                       <button
                         key={p.id}
-                        onClick={() => !isVoter && assign(p.id)}
-                        disabled={isVoter}
+                        onClick={() => assign(p.id)}
                         className={`animate-rise flex w-full items-center gap-3 rounded-xl bg-surface p-3 text-left ring-1 transition-all active:scale-[0.99] ${
                           award ? awardStyle[award].ring : "ring-line hover:bg-surface-2"
-                        } ${isVoter ? "opacity-50" : ""}`}
+                        }`}
                         style={{ animationDelay: `${200 + i * 30}ms` }}
                       >
                         <div className="relative shrink-0">
@@ -445,7 +396,6 @@ function Index() {
                             </span>
                             <span className="truncate text-sm font-semibold">
                               {p.name}
-                              {isVoter && " (toi)"}
                             </span>
                           </div>
                           <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -463,7 +413,7 @@ function Index() {
                           </div>
                         ) : (
                           <div className="shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-xs font-medium text-foreground/80 ring-1 ring-line">
-                            {isVoter ? "—" : "Choisir"}
+                            Choisir
                           </div>
                         )}
                       </button>
@@ -486,7 +436,7 @@ function Index() {
                   Les résultats restent sous scellés jusqu'à ce que l'administrateur les dévoile.
                 </p>
                 <div className="mt-4 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
-                  {voterCount} / {players.length} VOTANTS
+                  {voterCount} VOTE{voterCount > 1 ? "S" : ""}
                 </div>
               </div>
             )}
@@ -497,7 +447,7 @@ function Index() {
                 <div className="mt-6 flex items-center justify-between">
                   <h2 className="font-display text-lg tracking-wide">LE POINT DU VESTIAIRE</h2>
                   <div className="font-mono text-[10px] text-muted-foreground">
-                    {voterCount} / {players.length} votants
+                    {voterCount} vote{voterCount > 1 ? "s" : ""}
                   </div>
                 </div>
 
@@ -549,7 +499,7 @@ function Index() {
       </div>
 
       {/* Bottom bar */}
-      {match && step === "vote" && !alreadyVoted && votingOpen && isEligible && (
+      {match && step === "vote" && !alreadyVoted && votingOpen && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/95 backdrop-blur-sm">
           <div className="mx-auto max-w-md px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
