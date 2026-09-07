@@ -352,7 +352,7 @@ function Index() {
             )}
 
             {/* Step 2: vote */}
-            {step === "vote" && !alreadyVoted && votingOpen && isEligible && (
+            {step === "vote" && !alreadyVoted && votingOpen && (
 
               <>
                 <div className="mt-4 grid grid-cols-4 gap-1.5">
