@@ -274,7 +274,7 @@ function Index() {
                   <div>
                     <div className="font-display text-2xl tracking-tight">LE CHOULE</div>
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
-                      {match.our_score} — {match.their_score}
+                      {match.our_score ?? "–"} — {match.their_score ?? "–"}
                     </div>
                   </div>
                   <div className="shrink-0 origin-center rotate-90 font-mono text-[10px] text-muted-foreground">
@@ -285,10 +285,15 @@ function Index() {
                       {match.opponent}
                     </div>
                     <div className="mt-1 font-mono text-xs text-muted-foreground">
-                      {match.their_score} — {match.our_score}
+                      {match.their_score ?? "–"} — {match.our_score ?? "–"}
                     </div>
                   </div>
                 </div>
+                {match.our_score === null && match.their_score === null && (
+                  <div className="mt-3 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
+                    SCORE À VENIR
+                  </div>
+                )}
                 {match.note && (
                   <div className="mt-4 border-t border-line pt-4 text-sm text-foreground/80">
                     {match.note}
