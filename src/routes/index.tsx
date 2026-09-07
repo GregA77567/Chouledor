@@ -366,7 +366,7 @@ function Index() {
                         onClick={() => assign(p.id)}
                         className={`animate-rise flex w-full items-center gap-3 rounded-xl bg-surface p-3 text-left ring-1 transition-all active:scale-[0.99] ${
                           award ? awardStyle[award].ring : "ring-line hover:bg-surface-2"
-                        `}
+                        }`}
                         style={{ animationDelay: `${200 + i * 30}ms` }}
                       >
                         <div className="relative shrink-0">
