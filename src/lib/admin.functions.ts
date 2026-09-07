@@ -79,8 +79,8 @@ export const createMatch = createServerFn({ method: "POST" })
   .inputValidator(
     (data: {
       opponent: string;
-      our_score: number;
-      their_score: number;
+      our_score: number | null;
+      their_score: number | null;
       played_on: string;
       note: string;
       voterIds: string[];
