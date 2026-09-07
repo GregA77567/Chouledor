@@ -301,6 +301,68 @@ function AdminPanel() {
                 {current.is_revealed ? "MASQUER" : "CLÔTURER & DÉVOILER"}
               </button>
             </div>
+            <div className="mt-5 border-t border-line pt-4">
+              <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
+                MODIFIER LA FEUILLE DE MATCH
+              </div>
+              <div className="mt-3 space-y-2">
+                <input
+                  value={edit.opponent}
+                  onChange={(e) => setEdit({ ...edit, opponent: e.target.value })}
+                  placeholder="Adversaire"
+                  className="w-full rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <input
+                    type="number"
+                    value={edit.our_score}
+                    onChange={(e) => setEdit({ ...edit, our_score: e.target.value })}
+                    placeholder="Nous"
+                    className="rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                  />
+                  <input
+                    type="number"
+                    value={edit.their_score}
+                    onChange={(e) => setEdit({ ...edit, their_score: e.target.value })}
+                    placeholder="Eux"
+                    className="rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                  />
+                  <input
+                    type="date"
+                    value={edit.played_on}
+                    onChange={(e) => setEdit({ ...edit, played_on: e.target.value })}
+                    className="rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                  />
+                </div>
+                <input
+                  value={edit.note}
+                  onChange={(e) => setEdit({ ...edit, note: e.target.value })}
+                  placeholder="Note du match (optionnel)"
+                  className="w-full rounded-xl bg-surface px-3 py-2.5 text-sm ring-1 ring-line outline-none"
+                />
+                <button
+                  disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    await editMatch({
+                      data: {
+                        matchId: current.id,
+                        opponent: edit.opponent,
+                        our_score: edit.our_score === "" ? null : Number(edit.our_score),
+                        their_score: edit.their_score === "" ? null : Number(edit.their_score),
+                        played_on: edit.played_on,
+                        note: edit.note,
+                      },
+                    });
+                    setBusy(false);
+                    await refresh();
+                  }}
+                  className="w-full rounded-full bg-surface-2 px-3 py-2.5 font-mono text-[10px] tracking-[0.15em] ring-1 ring-line"
+                >
+                  ENREGISTRER LA FEUILLE DE MATCH
+                </button>
+              </div>
+            </div>
           </>
         ) : (
           <p className="mt-2 text-sm text-muted-foreground">
