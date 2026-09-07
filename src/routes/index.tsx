@@ -26,9 +26,17 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-type Step = "identity" | "vote" | "done";
+type Step = "vote" | "done";
 
-const VOTER_KEY = "choules-voter-id";
+const VOTER_KEY = "choules-device-id";
+
+function getDeviceId(): string {
+  const existing = window.localStorage.getItem(VOTER_KEY);
+  if (existing) return existing;
+  const id = crypto.randomUUID();
+  window.localStorage.setItem(VOTER_KEY, id);
+  return id;
+}
 
 const awardStyle: Record<Award, { ring: string; chip: string; text: string }> = {
   or: {
