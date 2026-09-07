@@ -124,6 +124,37 @@ export const createMatch = createServerFn({ method: "POST" })
     return { id: match.id };
   });
 
+export const updateMatch = createServerFn({ method: "POST" })
+  .inputValidator(
+    (data: {
+      matchId: string;
+      opponent: string;
+      our_score: number | null;
+      their_score: number | null;
+      played_on: string;
+      note: string;
+    }) => {
+      if (!data.opponent?.trim()) throw new Error("Adversaire requis");
+      return data;
+    },
+  )
+  .handler(async ({ data }) => {
+    await requireAdmin();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("matches")
+      .update({
+        opponent: data.opponent.trim(),
+        our_score: data.our_score,
+        their_score: data.their_score,
+        played_on: data.played_on,
+        note: data.note ?? "",
+      })
+      .eq("id", data.matchId);
+    if (error) throw error;
+    return { ok: true as const };
+  });
+
 export const setMatchVoters = createServerFn({ method: "POST" })
   .inputValidator((data: { matchId: string; voterIds: string[] }) => data)
   .handler(async ({ data }) => {
