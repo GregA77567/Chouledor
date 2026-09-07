@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { AWARDS, initials, type Award, type Match, type Player, type Vote } from "@/lib/choules";
 
@@ -222,7 +222,7 @@ function Index() {
           </div>
           <div className="flex items-center gap-3">
             <div className="font-mono text-[10px] text-muted-foreground">
-              {voterCount} / {players.length} votants
+              {voterCount} vote{voterCount > 1 ? "s" : ""}
             </div>
             <Link
               to="/admin"
@@ -360,15 +360,13 @@ function Index() {
                     const award = (Object.entries(selection) as [Award, string][]).find(
                       ([, pid]) => pid === p.id,
                     )?.[0];
-                    const isVoter = p.id === voterId;
                     return (
                       <button
                         key={p.id}
-                        onClick={() => !isVoter && assign(p.id)}
-                        disabled={isVoter}
+                        onClick={() => assign(p.id)}
                         className={`animate-rise flex w-full items-center gap-3 rounded-xl bg-surface p-3 text-left ring-1 transition-all active:scale-[0.99] ${
                           award ? awardStyle[award].ring : "ring-line hover:bg-surface-2"
-                        } ${isVoter ? "opacity-50" : ""}`}
+                        `}
                         style={{ animationDelay: `${200 + i * 30}ms` }}
                       >
                         <div className="relative shrink-0">
@@ -398,7 +396,6 @@ function Index() {
                             </span>
                             <span className="truncate text-sm font-semibold">
                               {p.name}
-                              {isVoter && " (toi)"}
                             </span>
                           </div>
                           <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
@@ -416,7 +413,7 @@ function Index() {
                           </div>
                         ) : (
                           <div className="shrink-0 rounded-full bg-surface-2 px-3 py-1.5 text-xs font-medium text-foreground/80 ring-1 ring-line">
-                            {isVoter ? "—" : "Choisir"}
+                            Choisir
                           </div>
                         )}
                       </button>
@@ -439,7 +436,7 @@ function Index() {
                   Les résultats restent sous scellés jusqu'à ce que l'administrateur les dévoile.
                 </p>
                 <div className="mt-4 font-mono text-[10px] tracking-[0.15em] text-muted-foreground">
-                  {voterCount} / {players.length} VOTANTS
+                  {voterCount} VOTE{voterCount > 1 ? "S" : ""}
                 </div>
               </div>
             )}
@@ -450,7 +447,7 @@ function Index() {
                 <div className="mt-6 flex items-center justify-between">
                   <h2 className="font-display text-lg tracking-wide">LE POINT DU VESTIAIRE</h2>
                   <div className="font-mono text-[10px] text-muted-foreground">
-                    {voterCount} / {players.length} votants
+                    {voterCount} vote{voterCount > 1 ? "s" : ""}
                   </div>
                 </div>
 
@@ -502,7 +499,7 @@ function Index() {
       </div>
 
       {/* Bottom bar */}
-      {match && step === "vote" && !alreadyVoted && votingOpen && isEligible && (
+      {match && step === "vote" && !alreadyVoted && votingOpen && (
         <div className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-background/95 backdrop-blur-sm">
           <div className="mx-auto max-w-md px-4 py-3">
             <div className="mb-2 flex items-center justify-between">
