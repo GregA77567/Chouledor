@@ -110,11 +110,11 @@ function Index() {
   const { data, isLoading, error } = useClubData();
   const queryClient = useQueryClient();
 
-  const [voterId, setVoterId] = useState<string | null>(() => {
-    if (typeof window === "undefined") return null;
-    return window.localStorage.getItem(VOTER_KEY);
-  });
-  const [step, setStep] = useState<Step>(voterId ? "vote" : "identity");
+  const [voterId, setVoterId] = useState<string | null>(null);
+  useEffect(() => {
+    setVoterId(getDeviceId());
+  }, []);
+  const [step, setStep] = useState<Step>("vote");
   const [selection, setSelection] = useState<Partial<Record<Award, string>>>({});
   const [activeAward, setActiveAward] = useState<Award>("or");
   const [submitting, setSubmitting] = useState(false);
