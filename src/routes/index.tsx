@@ -157,11 +157,6 @@ function Index() {
 
   const assignedCount = Object.values(selection).filter(Boolean).length;
 
-  function pickIdentity(id: string) {
-    setVoterId(id);
-    window.localStorage.setItem(VOTER_KEY, id);
-    setStep("vote");
-  }
 
   function assign(playerId: string) {
     setSelection((prev) => {
