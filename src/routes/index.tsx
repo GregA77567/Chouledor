@@ -307,14 +307,12 @@ function Index() {
               <>
                 <div className="mt-4 grid grid-cols-4 gap-1.5">
                   {AWARDS.map((a, i) => {
-                    const active = activeAward === a.key;
                     const filled = Boolean(selection[a.key]);
                     return (
-                      <button
+                      <div
                         key={a.key}
-                        onClick={() => setActiveAward(a.key)}
-                        className={`animate-rise rounded-lg bg-surface px-1 py-2 text-center ring-1 transition-all ${
-                          active ? awardStyle[a.key].ring + " bg-surface-2" : "ring-line"
+                        className={`animate-rise rounded-lg bg-surface px-1 py-2 text-center ring-1 ${
+                          filled ? awardStyle[a.key].ring + " bg-surface-2" : "ring-line"
                         }`}
                         style={{ animationDelay: `${80 + i * 60}ms` }}
                       >
@@ -335,7 +333,7 @@ function Index() {
                           {a.label}
                         </div>
                         {filled && <div className="mt-0.5 text-[9px] text-gold">✓</div>}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
