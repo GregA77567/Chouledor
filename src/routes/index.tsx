@@ -163,11 +163,11 @@ function Index() {
       const next = { ...prev };
       // Prix actuellement décerné à ce joueur (s'il y en a un)
       const currentIdx = AWARDS.findIndex((a) => next[a.key] === playerId);
-      if (currentIdx >= 0) delete next[AWARDS[currentIdx].key];
+      if (currentIdx >= 0) delete next[AWARDS[currentIdx]!.key];
       // Prix suivant encore libre (déjà attribué à un autre joueur = ignoré)
       let target: Award | null = null;
       for (let i = 1; i <= AWARDS.length; i++) {
-        const candidate = AWARDS[(currentIdx + i + AWARDS.length) % AWARDS.length].key;
+        const candidate = AWARDS[(currentIdx + i + AWARDS.length) % AWARDS.length]!.key;
         if (!next[candidate]) {
           target = candidate;
           break;
