@@ -116,7 +116,7 @@ function Index() {
   }, []);
   const [step, setStep] = useState<Step>("vote");
   const [selection, setSelection] = useState<Partial<Record<Award, string>>>({});
-  const [activeAward, setActiveAward] = useState<Award>("or");
+  
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -161,22 +161,21 @@ function Index() {
   function assign(playerId: string) {
     setSelection((prev) => {
       const next = { ...prev };
-      // Un-assign this player from any other award (un joueur = un prix)
-      for (const key of Object.keys(next) as Award[]) {
-        if (next[key] === playerId && key !== activeAward) delete next[key];
+      // Prix actuellement décerné à ce joueur (s'il y en a un)
+      const currentIdx = AWARDS.findIndex((a) => next[a.key] === playerId);
+      if (currentIdx >= 0) delete next[AWARDS[currentIdx]!.key];
+      // Prix suivant encore libre (déjà attribué à un autre joueur = ignoré)
+      let target: Award | null = null;
+      for (let i = 1; i <= AWARDS.length; i++) {
+        const candidate = AWARDS[(currentIdx + i + AWARDS.length) % AWARDS.length]!.key;
+        if (!next[candidate]) {
+          target = candidate;
+          break;
+        }
       }
-      if (next[activeAward] === playerId) {
-        delete next[activeAward];
-      } else {
-        next[activeAward] = playerId;
-      }
+      if (target) next[target] = playerId;
       return next;
     });
-    // Move to the next unassigned award
-    const nextFree = AWARDS.find(
-      (a) => a.key !== activeAward && !selection[a.key],
-    );
-    if (nextFree) setActiveAward(nextFree.key);
   }
 
   async function submit() {
@@ -308,14 +307,12 @@ function Index() {
               <>
                 <div className="mt-4 grid grid-cols-4 gap-1.5">
                   {AWARDS.map((a, i) => {
-                    const active = activeAward === a.key;
                     const filled = Boolean(selection[a.key]);
                     return (
-                      <button
+                      <div
                         key={a.key}
-                        onClick={() => setActiveAward(a.key)}
-                        className={`animate-rise rounded-lg bg-surface px-1 py-2 text-center ring-1 transition-all ${
-                          active ? awardStyle[a.key].ring + " bg-surface-2" : "ring-line"
+                        className={`animate-rise rounded-lg bg-surface px-1 py-2 text-center ring-1 ${
+                          filled ? awardStyle[a.key].ring + " bg-surface-2" : "ring-line"
                         }`}
                         style={{ animationDelay: `${80 + i * 60}ms` }}
                       >
@@ -336,7 +333,7 @@ function Index() {
                           {a.label}
                         </div>
                         {filled && <div className="mt-0.5 text-[9px] text-gold">✓</div>}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -348,11 +345,8 @@ function Index() {
                   </div>
                 </div>
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  Prix actif :{" "}
-                  <span className={awardStyle[activeAward].text + " font-semibold"}>
-                    {AWARDS.find((a) => a.key === activeAward)?.label}
-                  </span>{" "}
-                  — touche un joueur pour lui décerner.
+                  Touche un joueur pour lui décerner un prix : à chaque touche, il passe au prix
+                  disponible suivant (Or, Argent, Bronze, Dommage), puis à aucun prix.
                 </p>
 
                 <div className="mt-3 space-y-2.5">
