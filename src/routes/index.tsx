@@ -161,22 +161,21 @@ function Index() {
   function assign(playerId: string) {
     setSelection((prev) => {
       const next = { ...prev };
-      // Un-assign this player from any other award (un joueur = un prix)
-      for (const key of Object.keys(next) as Award[]) {
-        if (next[key] === playerId && key !== activeAward) delete next[key];
+      // Prix actuellement décerné à ce joueur (s'il y en a un)
+      const currentIdx = AWARDS.findIndex((a) => next[a.key] === playerId);
+      if (currentIdx >= 0) delete next[AWARDS[currentIdx].key];
+      // Prix suivant encore libre (déjà attribué à un autre joueur = ignoré)
+      let target: Award | null = null;
+      for (let i = 1; i <= AWARDS.length; i++) {
+        const candidate = AWARDS[(currentIdx + i + AWARDS.length) % AWARDS.length].key;
+        if (!next[candidate]) {
+          target = candidate;
+          break;
+        }
       }
-      if (next[activeAward] === playerId) {
-        delete next[activeAward];
-      } else {
-        next[activeAward] = playerId;
-      }
+      if (target) next[target] = playerId;
       return next;
     });
-    // Move to the next unassigned award
-    const nextFree = AWARDS.find(
-      (a) => a.key !== activeAward && !selection[a.key],
-    );
-    if (nextFree) setActiveAward(nextFree.key);
   }
 
   async function submit() {
