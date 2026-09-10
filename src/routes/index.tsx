@@ -345,11 +345,8 @@ function Index() {
                   </div>
                 </div>
                 <p className="mt-1 text-[12px] text-muted-foreground">
-                  Prix actif :{" "}
-                  <span className={awardStyle[activeAward].text + " font-semibold"}>
-                    {AWARDS.find((a) => a.key === activeAward)?.label}
-                  </span>{" "}
-                  — touche un joueur pour lui décerner.
+                  Touche un joueur pour lui décerner un prix : à chaque touche, il passe au prix
+                  disponible suivant (Or, Argent, Bronze, Dommage), puis à aucun prix.
                 </p>
 
                 <div className="mt-3 space-y-2.5">
