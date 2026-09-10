@@ -116,7 +116,7 @@ function Index() {
   }, []);
   const [step, setStep] = useState<Step>("vote");
   const [selection, setSelection] = useState<Partial<Record<Award, string>>>({});
-  const [activeAward, setActiveAward] = useState<Award>("or");
+  
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
