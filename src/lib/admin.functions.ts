@@ -52,7 +52,7 @@ export const adminOverview = createServerFn({ method: "GET" }).handler(async () 
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   const [playersRes, matchesRes] = await Promise.all([
-    supabaseAdmin.from("players").select("*").order("number"),
+    supabaseAdmin.from("players").select("*").order("name"),
     supabaseAdmin.from("matches").select("*").order("created_at", { ascending: false }).limit(20),
   ]);
   if (playersRes.error) throw playersRes.error;
@@ -188,7 +188,7 @@ export const setMatchState = createServerFn({ method: "POST" })
   });
 
 export const addPlayer = createServerFn({ method: "POST" })
-  .inputValidator((data: { name: string; number: number; position: string }) => {
+  .inputValidator((data: { name: string; position: string }) => {
     if (!data.name?.trim()) throw new Error("Nom requis");
     return data;
   })
@@ -197,7 +197,7 @@ export const addPlayer = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await supabaseAdmin.from("players").insert({
       name: data.name.trim(),
-      number: data.number,
+      number: 0,
       position: data.position || "Joueur",
     });
     if (error) throw error;

@@ -66,7 +66,7 @@ function useClubData() {
     queryKey: ["club-data"],
     queryFn: async () => {
       const [playersRes, matchRes] = await Promise.all([
-        supabase.from("players").select("*").order("number"),
+        supabase.from("players").select("*").order("name"),
         supabase
           .from("matches")
           .select("*")
@@ -391,9 +391,6 @@ function Index() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex items-baseline gap-2">
-                            <span className="font-mono text-[10px] text-muted-foreground">
-                              Nº {p.number}
-                            </span>
                             <span className="truncate text-sm font-semibold">
                               {p.name}
                             </span>

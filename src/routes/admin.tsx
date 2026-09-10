@@ -197,7 +197,7 @@ function AdminPanel() {
     });
   }, [current]);
   const [showNew, setShowNew] = useState(false);
-  const [newP, setNewP] = useState({ name: "", number: 0, position: "Joueur" });
+  const [newP, setNewP] = useState({ name: "", position: "Joueur" });
   const [busy, setBusy] = useState(false);
 
   const votedIds = useMemo(() => new Set(votes.map((v) => v.voter_id)), [votes]);
@@ -404,8 +404,7 @@ function AdminPanel() {
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold">{p.name}</div>
                     <div className="truncate font-mono text-[10px] text-muted-foreground">
-                      Nº {p.number} · {p.position}
-        
+                      {p.position}
                     </div>
                   </div>
                   <div
@@ -558,28 +557,19 @@ function AdminPanel() {
               value={newP.name}
               onChange={(e) => setNewP({ ...newP, name: e.target.value })}
             />
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                className={inputClass}
-                type="number"
-                placeholder="Numéro"
-                value={newP.number}
-                onChange={(e) => setNewP({ ...newP, number: Number(e.target.value) })}
-              />
-              <input
-                className={inputClass}
-                placeholder="Poste"
-                value={newP.position}
-                onChange={(e) => setNewP({ ...newP, position: e.target.value })}
-              />
-            </div>
+            <input
+              className={inputClass}
+              placeholder="Poste"
+              value={newP.position}
+              onChange={(e) => setNewP({ ...newP, position: e.target.value })}
+            />
             <button
               disabled={busy || !newP.name.trim()}
               onClick={async () => {
                 setBusy(true);
                 await newPlayer({ data: newP });
                 setBusy(false);
-                setNewP({ name: "", number: 0, position: "Joueur" });
+                setNewP({ name: "", position: "Joueur" });
                 await refresh();
               }}
               className="w-full rounded-full bg-surface-2 py-2.5 font-mono text-[10px] tracking-[0.15em] text-gold ring-1 ring-gold/40 disabled:opacity-40"
@@ -594,10 +584,7 @@ function AdminPanel() {
               key={p.id}
               className="flex items-center justify-between rounded-xl bg-surface px-3 py-2.5 ring-1 ring-line"
             >
-              <span className="truncate text-sm">
-                <span className="font-mono text-[10px] text-muted-foreground">Nº {p.number}</span>{" "}
-                {p.name}
-              </span>
+              <span className="truncate text-sm">{p.name}</span>
               <button
                 onClick={async () => {
                   await delPlayer({ data: { id: p.id } });
