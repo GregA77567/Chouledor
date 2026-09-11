@@ -202,20 +202,28 @@ function AdminPanel() {
 
   const votedIds = useMemo(() => new Set(votes.map((v) => v.voter_id)), [votes]);
 
-  const tally = useMemo(() => {
-    const map = new Map<string, Record<Award, number>>();
+  const POINTS: Record<Exclude<Award, "dommage">, number> = { or: 3, argent: 2, bronze: 1 };
+
+  const results = useMemo(() => {
+    const tally = new Map<string, Record<Award, number>>();
     for (const v of votes) {
-      const e = map.get(v.player_id) ?? { or: 0, argent: 0, bronze: 0, dommage: 0 };
-      e[v.award as Award] += 1;
-      map.set(v.player_id, e);
+      const entry = tally.get(v.player_id) ?? { or: 0, argent: 0, bronze: 0, dommage: 0 };
+      entry[v.award as Award] += 1;
+      tally.set(v.player_id, entry);
     }
-    return AWARDS.map((a) => ({
-      award: a,
-      ranked: players
-        .map((p) => ({ player: p, count: map.get(p.id)?.[a.key] ?? 0 }))
-        .filter((r) => r.count > 0)
-        .sort((x, y) => y.count - x.count),
-    }));
+    const podium = players
+      .map((p) => {
+        const t = tally.get(p.id);
+        const points = t ? t.or * POINTS.or + t.argent * POINTS.argent + t.bronze * POINTS.bronze : 0;
+        return { player: p, points, counts: t ?? { or: 0, argent: 0, bronze: 0, dommage: 0 } };
+      })
+      .filter((r) => r.points > 0)
+      .sort((x, y) => y.points - x.points);
+    const dommage = players
+      .map((p) => ({ player: p, count: tally.get(p.id)?.dommage ?? 0 }))
+      .filter((r) => r.count > 0)
+      .sort((x, y) => y.count - x.count);
+    return { podium, dommage };
   }, [votes, players]);
 
   async function refresh() {
