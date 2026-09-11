@@ -14,7 +14,7 @@ import {
   setMatchVoters,
   updateMatch,
 } from "@/lib/admin.functions";
-import { AWARDS, initials, type Award } from "@/lib/choules";
+import { initials, type Award } from "@/lib/choules";
 
 export const Route = createFileRoute("/admin")({
   ssr: false,
