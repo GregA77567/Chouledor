@@ -452,28 +452,86 @@ function AdminPanel() {
       {/* Résultats (admin uniquement) */}
       {current && (
         <section>
-          <h2 className="font-display text-lg tracking-wide">RÉSULTATS EN DIRECT</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg tracking-wide">RÉSULTATS EN DIRECT</h2>
+            <div className="font-mono text-[10px] text-muted-foreground">
+              {votedIds.size} vote{votedIds.size > 1 ? "s" : ""}
+            </div>
+          </div>
           <p className="mt-1 text-[12px] text-muted-foreground">
-            Visibles par toi seul tant que tu n'as pas dévoilé les résultats.
+            Visibles par toi seul tant que tu n'as pas dévoilé les résultats. Or = 3 pts · Argent = 2 pts · Bronze = 1 pt
           </p>
-          <div className="mt-3 space-y-2">
-            {tally.map(({ award, ranked }) => (
-              <div key={award.key} className="rounded-xl bg-surface p-3 ring-1 ring-line">
-                <div className="font-mono text-[10px] tracking-[0.2em] text-muted-foreground">
-                  {award.label.toUpperCase()}
-                </div>
-                {ranked.length === 0 ? (
-                  <div className="mt-1 text-sm text-muted-foreground">Aucun vote</div>
-                ) : (
-                  <div className="mt-1.5 space-y-1">
-                    {ranked.map((r) => (
-                      <div key={r.player.id} className="flex items-center justify-between text-sm">
-                        <span className="truncate">{r.player.name}</span>
-                        <span className="font-mono text-xs text-muted-foreground">{r.count}</span>
-                      </div>
-                    ))}
+
+          <div className="mt-3 space-y-2.5">
+            {results.podium.length === 0 && (
+              <div className="rounded-xl bg-surface p-4 text-center font-mono text-xs text-muted-foreground ring-1 ring-line">
+                Aucun point attribué
+              </div>
+            )}
+            {results.podium.map((r, i) => {
+              const medal =
+                i === 0
+                  ? { ring: "ring-gold/50", via: "via-gold ring-gold/50", text: "text-gold" }
+                  : i === 1
+                    ? { ring: "ring-silver/40", via: "via-silver ring-silver/40", text: "text-silver" }
+                    : i === 2
+                      ? { ring: "ring-bronze/40", via: "via-bronze ring-bronze/40", text: "text-bronze" }
+                      : { ring: "ring-line", via: "via-silver ring-line", text: "text-muted-foreground" };
+              return (
+                <div
+                  key={r.player.id}
+                  className={`flex items-center gap-3 rounded-xl bg-surface p-4 ring-1 ${medal.ring}`}
+                >
+                  <div
+                    className={`grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-b from-foreground to-background font-display text-sm text-background ring-1 ${medal.via}`}
+                  >
+                    {i + 1}
                   </div>
-                )}
+                  <div className="min-w-0 flex-1">
+                    <div className={`font-mono text-[10px] tracking-[0.2em] ${medal.text}`}>
+                      {i === 0 ? "CHOULE D'OR" : i === 1 ? "CHOULE D'ARGENT" : i === 2 ? "CHOULE DE BRONZE" : `N° ${i + 1}`}
+                    </div>
+                    <div className="mt-0.5 truncate text-sm font-semibold">{r.player.name}</div>
+                    <div className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                      {r.counts.or > 0 && `${r.counts.or} OR `}
+                      {r.counts.argent > 0 && `${r.counts.argent} ARG `}
+                      {r.counts.bronze > 0 && `${r.counts.bronze} BR`}
+                    </div>
+                  </div>
+                  <div className="shrink-0 font-display text-lg text-gold">
+                    {r.points}
+                    <span className="ml-1 font-mono text-[10px] text-muted-foreground">pts</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="mt-8 flex items-center justify-between">
+            <h2 className="font-display text-lg tracking-wide text-violet">LE DOMMAGE</h2>
+          </div>
+          <div className="mt-3 space-y-2.5">
+            {results.dommage.length === 0 && (
+              <div className="rounded-xl bg-surface p-4 text-center font-mono text-xs text-muted-foreground ring-1 ring-line">
+                Personne — un match sans casse
+              </div>
+            )}
+            {results.dommage.map((r, i) => (
+              <div
+                key={r.player.id}
+                className={`flex items-center gap-3 rounded-xl bg-surface p-4 ring-1 ${
+                  i === 0 ? "ring-violet/40" : "ring-line"
+                }`}
+              >
+                <div className="grid size-10 shrink-0 place-items-center rounded-full bg-gradient-to-b from-foreground via-violet to-background font-display text-sm text-background ring-1 ring-violet/40">
+                  {i + 1}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{r.player.name}</div>
+                </div>
+                <div className="shrink-0 font-mono text-xs text-muted-foreground">
+                  {r.count} vote{r.count > 1 ? "s" : ""}
+                </div>
               </div>
             ))}
           </div>
