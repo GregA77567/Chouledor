@@ -136,6 +136,8 @@ function Index() {
   const revealed = Boolean(match?.is_revealed);
   const votingOpen = Boolean(match?.is_open);
 
+  const POINTS: Record<Exclude<Award, "dommage">, number> = { or: 3, argent: 2, bronze: 1 };
+
   const results = useMemo(() => {
     const tally = new Map<string, Record<Award, number>>();
     for (const v of votes) {
@@ -143,13 +145,19 @@ function Index() {
       entry[v.award] += 1;
       tally.set(v.player_id, entry);
     }
-    return AWARDS.map((a) => {
-      const ranked = allPlayers
-        .map((p) => ({ player: p, count: tally.get(p.id)?.[a.key] ?? 0 }))
-        .filter((r) => r.count > 0)
-        .sort((x, y) => y.count - x.count);
-      return { award: a, winner: ranked[0] ?? null };
-    });
+    const podium = allPlayers
+      .map((p) => {
+        const t = tally.get(p.id);
+        const points = t ? t.or * POINTS.or + t.argent * POINTS.argent + t.bronze * POINTS.bronze : 0;
+        return { player: p, points, counts: t ?? { or: 0, argent: 0, bronze: 0, dommage: 0 } };
+      })
+      .filter((r) => r.points > 0)
+      .sort((x, y) => y.points - x.points);
+    const dommage = allPlayers
+      .map((p) => ({ player: p, count: tally.get(p.id)?.dommage ?? 0 }))
+      .filter((r) => r.count > 0)
+      .sort((x, y) => y.count - x.count);
+    return { podium, dommage };
   }, [votes, allPlayers]);
 
   const voterCount = votedIds.length;
